@@ -1,0 +1,32 @@
+[program:qq-like-server]
+; 项目目录
+directory=/www/wwwroot/qq-like-server
+
+; 启动命令
+command=/bin/bash /www/wwwroot/qq-like-server/start.sh
+
+; 自动启动
+autostart=true
+
+; 自动重启
+autorestart=true
+
+; 启动延迟（秒）
+startsecs=5
+
+; 停止等待时间（秒）
+stopwaitsecs=10
+
+; 日志文件
+stdout_logfile=/www/wwwlogs/qq-like-server.log
+stdout_logfile_maxbytes=10MB
+stdout_logfile_backups=10
+stderr_logfile=/www/wwwlogs/qq-like-server-error.log
+stderr_logfile_maxbytes=10MB
+stderr_logfile_backups=10
+
+; 运行用户
+user=www
+
+; 环境变量
+environment=GIN_MODE=release
