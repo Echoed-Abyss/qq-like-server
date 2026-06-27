@@ -61,6 +61,7 @@ func main() {
 		user.Use(middleware.AuthMiddleware())
 		{
 			user.GET("/info", userHandler.GetUserInfo)
+			user.GET("/friends", userHandler.GetFriendList)
 			user.GET("/profile/:id", userHandler.GetUserProfile)
 			user.PUT("/status", userHandler.UpdateStatus)
 			user.GET("/devices", userHandler.GetDevices)
@@ -87,6 +88,7 @@ func main() {
 		group := api.Group("/group")
 		group.Use(middleware.AuthMiddleware())
 		{
+			group.GET("/list", groupHandler.GetUserGroups)
 			group.GET("/:id", groupHandler.GetGroupInfo)
 			group.POST("/create", groupHandler.CreateGroup)
 			group.POST("/join", groupHandler.JoinGroup)

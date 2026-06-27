@@ -166,6 +166,10 @@ func (s *UserService) KickDevice(userID uint64, deviceID uint64) error {
 	return nil
 }
 
+func (s *UserService) GetFriendGroups(userID uint64) ([]FriendGroupInfo, error) {
+	return s.getFriendGroups(userID), nil
+}
+
 func (s *UserService) getFriendGroups(userID uint64) []FriendGroupInfo {
 	var groups []model.FriendGroup
 	model.DB.Where("user_id = ?", userID).Order("sort ASC").Find(&groups)
@@ -358,15 +362,22 @@ func (s *UserService) GetLikeRank() ([]model.User, error) {
 	return users, nil
 }
 
-func (s *UserService) UpdateProfile(userID uint64, nickname, signature, bio, tags string, gender, age int) error {
-	result := model.DB.Model(&model.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
+func (s *UserService) UpdateProfile(userID uint64, nickname, signature, bio, tags string, gender, age int, avatar, banner string) error {
+	updates := map[string]interface{}{
 		"nickname":  nickname,
 		"signature": signature,
 		"bio":       bio,
 		"tags":      tags,
 		"gender":    gender,
 		"age":       age,
-	})
+	}
+	if avatar != "" {
+		updates["avatar"] = avatar
+	}
+	if banner != "" {
+		updates["banner"] = banner
+	}
+	result := model.DB.Model(&model.User{}).Where("id = ?", userID).Updates(updates)
 	if result.Error != nil {
 		return result.Error
 	}

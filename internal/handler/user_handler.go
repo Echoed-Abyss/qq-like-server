@@ -20,6 +20,18 @@ func NewUserHandler() *UserHandler {
 	}
 }
 
+func (h *UserHandler) GetFriendList(c *gin.Context) {
+	userID := utils.GetUserIDFromContext(c)
+
+	result, err := h.userService.GetFriendGroups(userID)
+	if err != nil {
+		utils.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	utils.Success(c, result)
+}
+
 func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	userID := utils.GetUserIDFromContext(c)
 
@@ -152,6 +164,8 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		Tags      string `json:"tags"`
 		Gender    int    `json:"gender"`
 		Age       int    `json:"age"`
+		Avatar    string `json:"avatar"`
+		Banner    string `json:"banner"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.Error(c, http.StatusBadRequest, "参数错误")
@@ -160,7 +174,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 
 	userID := utils.GetUserIDFromContext(c)
 
-	err := h.userService.UpdateProfile(userID, req.Nickname, req.Signature, req.Bio, req.Tags, req.Gender, req.Age)
+	err := h.userService.UpdateProfile(userID, req.Nickname, req.Signature, req.Bio, req.Tags, req.Gender, req.Age, req.Avatar, req.Banner)
 	if err != nil {
 		utils.Error(c, http.StatusInternalServerError, err.Error())
 		return

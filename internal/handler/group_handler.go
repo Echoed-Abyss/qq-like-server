@@ -20,6 +20,16 @@ func NewGroupHandler() *GroupHandler {
 	}
 }
 
+func (h *GroupHandler) GetUserGroups(c *gin.Context) {
+	userID := utils.GetUserIDFromContext(c)
+	result, err := h.groupService.GetUserGroups(userID)
+	if err != nil {
+		utils.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	utils.Success(c, result)
+}
+
 func (h *GroupHandler) GetGroupInfo(c *gin.Context) {
 	groupIDStr := c.Param("id")
 	groupID, err := strconv.ParseUint(groupIDStr, 10, 64)
@@ -40,9 +50,10 @@ func (h *GroupHandler) GetGroupInfo(c *gin.Context) {
 }
 
 type CreateGroupRequest struct {
-	Name        string `json:"name" binding:"required,min=2,max=50"`
-	Description string `json:"description"`
-	Avatar      string `json:"avatar"`
+	Name        string   `json:"name" binding:"required,min=2,max=50"`
+	Description string   `json:"description"`
+	Avatar      string   `json:"avatar"`
+	MemberIDs   []uint64 `json:"member_ids"`
 }
 
 func (h *GroupHandler) CreateGroup(c *gin.Context) {
@@ -54,7 +65,7 @@ func (h *GroupHandler) CreateGroup(c *gin.Context) {
 
 	userID := utils.GetUserIDFromContext(c)
 
-	result, err := h.groupService.CreateGroup(userID, req.Name, req.Description, req.Avatar)
+	result, err := h.groupService.CreateGroup(userID, req.Name, req.Description, req.Avatar, req.MemberIDs)
 	if err != nil {
 		utils.Error(c, http.StatusInternalServerError, err.Error())
 		return

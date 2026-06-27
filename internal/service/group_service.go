@@ -93,7 +93,79 @@ func (s *GroupService) GetGroupInfo(groupID uint64, userID uint64) (*GroupDetail
 	}, nil
 }
 
-func (s *GroupService) CreateGroup(userID uint64, name string, description string, avatar string) (*model.Group, error) {
+type UserGroupInfo struct {
+	ID          uint64 `json:"id"`
+	GroupNumber string `json:"group_number"`
+	Name        string `json:"name"`
+	Avatar      string `json:"avatar"`
+	Description string `json:"description"`
+	MemberCount int    `json:"member_count"`
+	OnlineCount int    `json:"online_count"`
+	LastMsg     string `json:"last_msg"`
+	LastMsgTime string `json:"last_msg_time"`
+	UnreadCount int    `json:"unread_count"`
+}
+
+func (s *GroupService) GetUserGroups(userID uint64) ([]UserGroupInfo, error) {
+	var members []model.GroupMember
+	model.DB.Where("user_id = ?", userID).Find(&members)
+
+	var groupIDs []uint64
+	for _, m := range members {
+		groupIDs = append(groupIDs, m.GroupID)
+	}
+
+	var result []UserGroupInfo
+	if len(groupIDs) == 0 {
+		return result, nil
+	}
+
+	var groups []model.Group
+	model.DB.Where("id IN ?", groupIDs).Find(&groups)
+
+	for _, g := range groups {
+		onlineCount := 0
+		var groupMembers []model.GroupMember
+		model.DB.Where("group_id = ?", g.ID).Find(&groupMembers)
+
+		var memberIDs []uint64
+		for _, m := range groupMembers {
+			memberIDs = append(memberIDs, m.UserID)
+		}
+
+		if len(memberIDs) > 0 {
+			var count int64
+			model.DB.Model(&model.User{}).Where("id IN ? AND online_status != ?", memberIDs, 5).Count(&count)
+			onlineCount = int(count)
+		}
+
+		lastMsg := ""
+		lastMsgTime := ""
+		var messages []model.Message
+		model.DB.Where("session_type = ? AND session_id = ?", 2, g.ID).Order("send_time DESC").Limit(1).Find(&messages)
+		if len(messages) > 0 {
+			lastMsg = messages[0].Content
+			lastMsgTime = messages[0].SendTime.Format("2006-01-02 15:04:05")
+		}
+
+		result = append(result, UserGroupInfo{
+			ID:          g.ID,
+			GroupNumber: g.GroupNumber,
+			Name:        g.Name,
+			Avatar:      g.Avatar,
+			Description: g.Description,
+			MemberCount: g.MemberCount,
+			OnlineCount: onlineCount,
+			LastMsg:     lastMsg,
+			LastMsgTime: lastMsgTime,
+			UnreadCount: 0,
+		})
+	}
+
+	return result, nil
+}
+
+func (s *GroupService) CreateGroup(userID uint64, name string, description string, avatar string, memberIDs []uint64) (*model.Group, error) {
 	groupNumber := generateGroupNumber()
 
 	group := &model.Group{
@@ -102,7 +174,7 @@ func (s *GroupService) CreateGroup(userID uint64, name string, description strin
 		Description: description,
 		Avatar:      avatar,
 		OwnerID:     userID,
-		MemberCount: 1,
+		MemberCount: 1 + len(memberIDs),
 		MaxMembers:  2000,
 		Status:      model.GroupStatusNormal,
 	}
@@ -120,6 +192,20 @@ func (s *GroupService) CreateGroup(userID uint64, name string, description strin
 		JoinTime: time.Now(),
 	}
 	model.DB.Create(member)
+
+	for _, mid := range memberIDs {
+		if mid == userID {
+			continue
+		}
+		m := &model.GroupMember{
+			GroupID:  group.ID,
+			UserID:   mid,
+			Nickname: "",
+			Role:     model.GroupRoleMember,
+			JoinTime: time.Now(),
+		}
+		model.DB.Create(m)
+	}
 
 	return group, nil
 }
