@@ -38,6 +38,7 @@ func main() {
 	messageHandler := handler.NewMessageHandler()
 	groupHandler := handler.NewGroupHandler()
 	qrHandler := handler.NewQRCodeHandler()
+	appHandler := handler.NewAppHandler()
 
 	// CORS 中间件
 	r.Use(middleware.CORSMiddleware())
@@ -105,6 +106,12 @@ func main() {
 			qr.GET("/group/:id", qrHandler.GetGroupQRCode)
 			qr.POST("/parse", qrHandler.ParseQRCode)
 		}
+	}
+
+	app := r.Group("/api/app")
+	app.Use(middleware.SignatureMiddleware())
+	{
+		app.GET("/update", appHandler.CheckUpdate)
 	}
 
 	addr := fmt.Sprintf("%s:%d", config.AppConfig.Server.Host, config.AppConfig.Server.Port)

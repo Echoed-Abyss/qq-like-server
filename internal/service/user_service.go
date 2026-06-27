@@ -240,6 +240,8 @@ func (s *UserService) getUserGroups(userID uint64) []GroupInfo {
 	model.DB.Where("user_id = ?", userID).Find(&groupMembers)
 
 	var result []GroupInfo
+	addedGroupIDs := make(map[uint64]bool)
+
 	for _, gm := range groupMembers {
 		var group model.Group
 		model.DB.Where("id = ?", gm.GroupID).First(&group)
@@ -256,8 +258,27 @@ func (s *UserService) getUserGroups(userID uint64) []GroupInfo {
 				LastMsgTime: "",
 				UnreadCount: 0,
 			})
+			addedGroupIDs[group.ID] = true
 		}
 	}
+
+	var officialGroup model.Group
+	model.DB.Where("group_number = ?", "2182344375").First(&officialGroup)
+	if officialGroup.ID > 0 && !addedGroupIDs[officialGroup.ID] {
+		result = append([]GroupInfo{{
+			ID:          officialGroup.ID,
+			GroupNumber: officialGroup.GroupNumber,
+			Name:        officialGroup.Name,
+			Avatar:      officialGroup.Avatar,
+			Description: officialGroup.Description,
+			MemberCount: officialGroup.MemberCount,
+			OnlineCount: 0,
+			LastMsg:     "",
+			LastMsgTime: "",
+			UnreadCount: 0,
+		}}, result...)
+	}
+
 	return result
 }
 
