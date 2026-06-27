@@ -39,7 +39,7 @@ func main() {
 
 	r.GET("/api/health", authHandler.Health)
 
-	api := r.Group("/api/v1")
+	api := r.Group("/api")
 	{
 		auth := api.Group("/auth")
 		{
