@@ -20,6 +20,11 @@ type User struct {
 	Constellation string   `json:"constellation" gorm:"size:20"`
 	Location     string    `json:"location" gorm:"size:100"`
 	Occupation   string    `json:"occupation" gorm:"size:50"`
+	Bio          string    `json:"bio" gorm:"size:500"`
+	Tags         string    `json:"tags" gorm:"size:500"`
+	Likes        int       `json:"likes" gorm:"default:0"`
+	Exp          int       `json:"exp" gorm:"default:0"`
+	LastCheckIn  time.Time `json:"last_check_in"`
 	Status       int       `json:"status" gorm:"default:1"`
 	OnlineStatus int       `json:"online_status" gorm:"default:0"`
 	CreatedAt    time.Time `json:"created_at"`
@@ -67,9 +72,26 @@ type Group struct {
 	OwnerID     uint64    `json:"owner_id"`
 	MemberCount int       `json:"member_count" gorm:"default:0"`
 	MaxMembers  int       `json:"max_members" gorm:"default:2000"`
+	JoinType    int       `json:"join_type" gorm:"default:0"`
+	IsAllMuted  bool      `json:"is_all_muted" gorm:"default:false"`
 	Status      int       `json:"status" gorm:"default:1"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type GroupAdmin struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	GroupID   uint      `json:"group_id" gorm:"index"`
+	UserID    uint      `json:"user_id" gorm:"index"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type GroupJoinRequest struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	GroupID   uint      `json:"group_id" gorm:"index"`
+	UserID    uint      `json:"user_id" gorm:"index"`
+	Status    int       `json:"status" gorm:"default:0"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type GroupMember struct {
@@ -196,4 +218,16 @@ const (
 	GroupStatusNormal  = 1
 	GroupStatusBanned  = 2
 	GroupStatusDeleted = 3
+)
+
+const (
+	GroupJoinTypeAnyone    = 0
+	GroupJoinTypeNeedAudit = 1
+	GroupJoinTypeForbidden = 2
+)
+
+const (
+	GroupJoinRequestPending  = 0
+	GroupJoinRequestAccepted = 1
+	GroupJoinRequestRejected = 2
 )

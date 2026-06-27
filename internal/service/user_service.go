@@ -2,6 +2,10 @@ package service
 
 import (
 	"errors"
+	"math/rand"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/echoed-abyss/qq-like-server/internal/model"
 )
@@ -264,4 +268,118 @@ func (s *UserService) getUserByID(userID uint64) *model.User {
 		return nil
 	}
 	return &user
+}
+
+func CalculateLevel(exp int) int {
+	if exp < 100 {
+		return 1
+	}
+	levels := []struct{ maxLevel, expPerLevel int }{
+		{10, 100}, {20, 150}, {30, 200}, {40, 300}, {50, 500},
+	}
+	remainingExp := exp
+	currentLevel := 1
+	for _, tier := range levels {
+		for currentLevel < tier.maxLevel && remainingExp >= tier.expPerLevel {
+			remainingExp -= tier.expPerLevel
+			currentLevel++
+		}
+		if currentLevel >= tier.maxLevel {
+			continue
+		}
+		break
+	}
+	if currentLevel > 50 {
+		currentLevel = 50
+	}
+	return currentLevel
+}
+
+func (s *UserService) CheckIn(userID uint64) (int, int, error) {
+	var user model.User
+	result := model.DB.Where("id = ?", userID).First(&user)
+	if result.Error != nil {
+		return 0, 0, errors.New("用户不存在")
+	}
+
+	now := time.Now()
+	if user.LastCheckIn.Year() == now.Year() && user.LastCheckIn.YearDay() == now.YearDay() {
+		return 0, 0, errors.New("今天已经打卡过了")
+	}
+
+	expGain := 20 + rand.Intn(41)
+	user.Exp += expGain
+	user.LastCheckIn = now
+	user.Level = CalculateLevel(user.Exp)
+
+	model.DB.Save(&user)
+	return expGain, user.Level, nil
+}
+
+func (s *UserService) LikeUser(targetID uint64) (int, error) {
+	var user model.User
+	result := model.DB.Where("id = ?", targetID).First(&user)
+	if result.Error != nil {
+		return 0, errors.New("用户不存在")
+	}
+
+	user.Likes++
+	model.DB.Save(&user)
+	return user.Likes, nil
+}
+
+func (s *UserService) GetLikeRank() ([]model.User, error) {
+	var users []model.User
+	result := model.DB.Order("likes DESC").Limit(50).Find(&users)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return users, nil
+}
+
+func (s *UserService) UpdateProfile(userID uint64, nickname, signature, bio, tags string, gender, age int) error {
+	result := model.DB.Model(&model.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
+		"nickname":  nickname,
+		"signature": signature,
+		"bio":       bio,
+		"tags":      tags,
+		"gender":    gender,
+		"age":       age,
+	})
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
+func (s *UserService) UpdatePassword(userID uint64, oldPassword, newPassword string) error {
+	var user model.User
+	result := model.DB.Where("id = ?", userID).First(&user)
+	if result.Error != nil {
+		return errors.New("用户不存在")
+	}
+
+	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPassword))
+	if err != nil {
+		return errors.New("原密码错误")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.New("密码加密失败")
+	}
+
+	model.DB.Model(&user).Update("password", string(hashedPassword))
+	return nil
+}
+
+func (s *UserService) DeleteAccount(userID uint64) error {
+	var user model.User
+	result := model.DB.Where("id = ?", userID).First(&user)
+	if result.Error != nil {
+		return errors.New("用户不存在")
+	}
+
+	model.DB.Delete(&user)
+	return nil
 }

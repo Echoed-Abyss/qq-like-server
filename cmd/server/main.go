@@ -64,6 +64,12 @@ func main() {
 			user.PUT("/status", userHandler.UpdateStatus)
 			user.GET("/devices", userHandler.GetDevices)
 			user.DELETE("/device/:id", userHandler.KickDevice)
+			user.POST("/checkin", userHandler.CheckIn)
+			user.POST("/like/:id", userHandler.LikeUser)
+			user.GET("/like/rank", userHandler.GetLikeRank)
+			user.PUT("/profile", userHandler.UpdateProfile)
+			user.PUT("/password", userHandler.UpdatePassword)
+			user.DELETE("", userHandler.DeleteAccount)
 		}
 
 		msg := api.Group("/message")
@@ -83,7 +89,13 @@ func main() {
 			group.GET("/:id", groupHandler.GetGroupInfo)
 			group.POST("/create", groupHandler.CreateGroup)
 			group.POST("/join", groupHandler.JoinGroup)
+			group.POST("/:id/join", groupHandler.ApplyJoinGroup)
 			group.DELETE("/:id/leave", groupHandler.LeaveGroup)
+			group.PUT("/:id/settings", groupHandler.UpdateGroupSettings)
+			group.POST("/:id/admin", groupHandler.AddAdmin)
+			group.DELETE("/:id/admin/:userId", groupHandler.RemoveAdmin)
+			group.GET("/join-requests", groupHandler.GetJoinRequests)
+			group.PUT("/join-request/:id", groupHandler.HandleJoinRequest)
 		}
 
 		qr := api.Group("/qrcode")
