@@ -46,25 +46,16 @@ func InitDB() {
 func initOfficialGroup() {
 	var officialGroup Group
 	if err := DB.Where("group_number = ?", "2182344375").First(&officialGroup).Error; err != nil {
-		var officialUser User
-		if err := DB.Where("account = ?", "2182344375").First(&officialUser).Error; err != nil {
-			officialUser = User{
-				QQNumber: "2182344375",
-				Password: "",
-				Nickname: "ReCh官方",
-				Avatar:   "",
-			}
-			DB.Create(&officialUser)
-		}
-
+		// 群主ID为928436456（账号2182344375对应的用户ID）
 		officialGroup = Group{
 			GroupNumber: "2182344375",
 			Name:        "ReCh官方交流群",
 			Description: "ReCh官方交流群，欢迎加入！",
-			OwnerID:     officialUser.ID,
+			OwnerID:     928436456,
 			Avatar:      "",
 		}
 		DB.Create(&officialGroup)
+		log.Printf("Created official group: %s (ID: %d)", officialGroup.Name, officialGroup.ID)
 	}
 }
 
