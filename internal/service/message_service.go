@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/echoed-abyss/qq-like-server/internal/model"
+	"github.com/echoed-abyss/qq-like-server/internal/tcp"
 )
 
 type MessageService struct{}
@@ -71,7 +72,27 @@ func (s *MessageService) SendMessage(userID uint64, req *SendMessageRequest) (*M
 		return nil, result.Error
 	}
 
-	return s.messageToInfo(msg), nil
+	msgInfo := s.messageToInfo(msg)
+	go s.pushNewMessage(req.SessionType, req.SessionID, userID, msgInfo)
+
+	return msgInfo, nil
+}
+
+func (s *MessageService) pushNewMessage(sessionType int, sessionID uint64, senderID uint64, msg *MessageInfo) {
+	tcpServer := tcp.GetServer()
+	pushMsg := &tcp.PushMessage{
+		Type:      tcp.MsgTypeNewMessage,
+		Content:   msg,
+		MsgID:     msg.ID,
+		Timestamp: time.Now().Unix(),
+	}
+
+	if sessionType == model.SessionTypeGroup {
+		tcpServer.PushToGroup(sessionID, pushMsg)
+	} else {
+		tcpServer.PushToUser(sessionID, pushMsg)
+		tcpServer.PushToUser(senderID, pushMsg)
+	}
 }
 
 func (s *MessageService) RecallMessage(userID uint64, msgID uint64) error {
@@ -98,7 +119,26 @@ func (s *MessageService) RecallMessage(userID uint64, msgID uint64) error {
 	msg.RecalledAt = time.Now()
 	model.DB.Save(&msg)
 
+	go s.pushRecallMessage(&msg)
+
 	return nil
+}
+
+func (s *MessageService) pushRecallMessage(msg *model.Message) {
+	tcpServer := tcp.GetServer()
+	pushMsg := &tcp.PushMessage{
+		Type:      tcp.MsgTypeRecall,
+		Content:   map[string]interface{}{"msg_id": msg.ID, "session_type": msg.SessionType, "session_id": msg.SessionID},
+		MsgID:     msg.ID,
+		Timestamp: time.Now().Unix(),
+	}
+
+	if msg.SessionType == model.SessionTypeGroup {
+		tcpServer.PushToGroup(msg.SessionID, pushMsg)
+	} else {
+		tcpServer.PushToUser(msg.SessionID, pushMsg)
+		tcpServer.PushToUser(msg.SenderID, pushMsg)
+	}
 }
 
 func (s *MessageService) GetMessageList(userID uint64, sessionType int, sessionID uint64, page int, pageSize int) ([]MessageInfo, int64, error) {

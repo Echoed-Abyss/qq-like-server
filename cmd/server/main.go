@@ -29,6 +29,7 @@ func main() {
 	r := gin.Default()
 
 	r.Use(middleware.CORSMiddleware())
+	r.Use(middleware.SignatureMiddleware())
 
 	authHandler := handler.NewAuthHandler()
 	userHandler := handler.NewUserHandler()

@@ -1,35 +1,23 @@
 package model
 
 import (
-	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
-	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-
-	"github.com/echoed-abyss/qq-like-server/internal/config"
 )
 
 var DB *gorm.DB
 
 func InitDB() {
-	cfg := config.AppConfig.Database
-	dsn := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode,
-	)
-
 	var err error
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
+	DB, err = initSQLite()
+
 	if err != nil {
-		log.Printf("Failed to connect to database: %v, using SQLite fallback", err)
-		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-		if err != nil {
-			log.Fatalf("Failed to connect to database: %v", err)
-		}
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
 	err = DB.AutoMigrate(
@@ -49,4 +37,20 @@ func InitDB() {
 	}
 
 	log.Println("Database initialized successfully")
+}
+
+func initSQLite() (*gorm.DB, error) {
+	dbDir := "./data"
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		return nil, err
+	}
+	dbPath := filepath.Join(dbDir, "qq_like.db")
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("Using SQLite database at: %s", dbPath)
+	return db, nil
 }

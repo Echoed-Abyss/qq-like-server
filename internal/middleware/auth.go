@@ -1,11 +1,15 @@
 package middleware
 
 import (
+	"bytes"
+	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/echoed-abyss/qq-like-server/internal/crypto"
 	"github.com/echoed-abyss/qq-like-server/pkg/utils"
 )
 
@@ -56,6 +60,42 @@ func CORSMiddleware() gin.HandlerFunc {
 
 func SignatureMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		timestampStr := c.GetHeader("X-Timestamp")
+		nonce := c.GetHeader("X-Nonce")
+		signature := c.GetHeader("X-Sign")
+
+		if timestampStr == "" || nonce == "" || signature == "" {
+			utils.Error(c, http.StatusBadRequest, "缺少签名参数")
+			c.Abort()
+			return
+		}
+
+		timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
+		if err != nil {
+			utils.Error(c, http.StatusBadRequest, "时间戳格式错误")
+			c.Abort()
+			return
+		}
+
+		var bodyStr string
+		if c.Request.Method == "POST" || c.Request.Method == "PUT" {
+			var bodyBytes []byte
+			bodyBytes, err = io.ReadAll(c.Request.Body)
+			if err != nil {
+				utils.Error(c, http.StatusBadRequest, "读取请求体失败")
+				c.Abort()
+				return
+			}
+			c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+			bodyStr = string(bodyBytes)
+		}
+
+		if !crypto.VerifySignature(bodyStr, timestamp, nonce, signature) {
+			utils.Error(c, http.StatusBadRequest, "签名验证失败")
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }
