@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/echoed-abyss/qq-like-server/internal/config"
+	"github.com/echoed-abyss/qq-like-server/internal/crypto"
 	"github.com/echoed-abyss/qq-like-server/internal/handler"
 	"github.com/echoed-abyss/qq-like-server/internal/middleware"
 	"github.com/echoed-abyss/qq-like-server/internal/model"
@@ -15,6 +16,9 @@ import (
 
 func main() {
 	config.LoadConfig()
+
+	// 初始化加密模块
+	crypto.InitCrypto(config.AppConfig.AppSecret)
 
 	model.InitDB()
 
@@ -28,18 +32,22 @@ func main() {
 	gin.SetMode(config.AppConfig.Server.Mode)
 	r := gin.Default()
 
-	r.Use(middleware.CORSMiddleware())
-	r.Use(middleware.SignatureMiddleware())
-
+	// 初始化 handler
 	authHandler := handler.NewAuthHandler()
 	userHandler := handler.NewUserHandler()
 	messageHandler := handler.NewMessageHandler()
 	groupHandler := handler.NewGroupHandler()
 	qrHandler := handler.NewQRCodeHandler()
 
+	// CORS 中间件
+	r.Use(middleware.CORSMiddleware())
+
+	// 健康检查不需要签名验证
 	r.GET("/api/health", authHandler.Health)
 
+	// 需要签名验证的接口组
 	api := r.Group("/api")
+	api.Use(middleware.SignatureMiddleware())
 	{
 		auth := api.Group("/auth")
 		{

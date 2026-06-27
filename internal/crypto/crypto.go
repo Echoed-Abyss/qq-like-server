@@ -18,6 +18,10 @@ var (
 	aesKey    = []byte("qq-like-server-aes-key-2024!")
 )
 
+func InitCrypto(secret string) {
+	appSecret = []byte(secret)
+}
+
 func GenerateSignature(data string, timestamp int64, nonce string) string {
 	h := hmac.New(sha256.New, appSecret)
 	h.Write([]byte(data))
